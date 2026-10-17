@@ -111,16 +111,16 @@ pip install pandas numpy scikit-learn matplotlib
 
 ### ขั้นตอน
 1. ดาวน์โหลด `spotify_2023.csv` จาก Kaggle (ลิงก์ด้านบน)
-2. วางไฟล์ไว้โฟลเดอร์เดียวกับ `clustering_all.py` หรือกำหนด path ผ่านตัวแปรแวดล้อม
+2. วางไฟล์ไว้โฟลเดอร์เดียวกับ `main.py` หรือกำหนด path ผ่านตัวแปรแวดล้อม
 
 ```bash
-python clustering_all.py
+python main.py
 ```
 
 ```bash
 # กรณีไฟล์ข้อมูลอยู่ที่อื่น
-SPOTIFY_CSV=/path/to/spotify_2023.csv python clustering_all.py      # macOS / Linux
-set SPOTIFY_CSV=C:\path\to\spotify_2023.csv && python clustering_all.py   # Windows
+SPOTIFY_CSV=/path/to/spotify_2023.csv python main.py      # macOS / Linux
+set SPOTIFY_CSV=C:\path\to\spotify_2023.csv && python main.py   # Windows
 ```
 
 ### ผลลัพธ์ที่โปรแกรมสร้าง
@@ -133,7 +133,7 @@ set SPOTIFY_CSV=C:\path\to\spotify_2023.csv && python clustering_all.py   # Wind
 | `output/spotify_2023_clustered.csv` | ข้อมูลรายเพลงพร้อมชื่อกลุ่มทั้ง 2 แบบ |
 
 ### เปลี่ยนเพลงที่ต้องการแนะนำ
-แก้ที่ส่วน "แนะนำเพลง" ใกล้ท้ายไฟล์ `clustering_all.py`
+แก้ที่ส่วน "แนะนำเพลง" ใกล้ท้ายไฟล์ `main.py`
 
 ```python
 print(recommend("Perfect", "audio", 5).to_string(index=False))
@@ -142,7 +142,7 @@ print(recommend("Blinding Lights", "pop", 10, max_per_artist=1).to_string(index=
 
 ชื่อเพลงไม่สนตัวพิมพ์เล็ก/ใหญ่ ถ้าพิมพ์ผิดโปรแกรมจะแสดงชื่อที่ใกล้เคียงให้
 
-## โครงสร้างของโค้ด (`clustering_all.py`)
+## โครงสร้างของโค้ด (`main.py`)
 
 | คลาส/ฟังก์ชัน | หน้าที่ |
 |---|---|
