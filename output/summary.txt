@@ -1,0 +1,59 @@
+======================================================================
+สรุปผลการจัดกลุ่มและแนะนำเพลง: Top Spotify Songs 2023
+======================================================================
+
+1. ภาพรวมข้อมูล
+   - จำนวนเพลงหลังทำความสะอาด: 952 เพลง
+   - ฟีเจอร์ Popularity 3 ตัว: streams, in_spotify_playlists, in_spotify_charts
+   - ฟีเจอร์ Audio 8 ตัว: bpm, danceability_%, valence_%, energy_%, acousticness_%, instrumentalness_%, liveness_%, speechiness_%
+
+2. Popularity Model (K-means k=3, log1p + Standardize)
+   Silhouette = 0.367   | k ที่ silhouette สูงสุดในช่วง 2-8 คือ k=2 (0.376) แต่เลือกใช้ k=3 เพราะแบ่งกลุ่มที่ตีความได้ละเอียดกว่า โดยยอมให้ silhouette ต่ำลงเล็กน้อย
+   โปรไฟล์กลุ่ม (มัธยฐาน; streams หน่วยล้าน):
+                      n_tracks  streams_median_M  playlist_median  charts_median  median_year
+   pop_cluster_label                                                                         
+   All-Time Megahits       329               921           7963.0           12.0       2020.0
+   Moderate Hits           382               190           1590.5            0.0       2022.0
+   Top Charting Hits       241               161            727.0           13.0       2023.0
+
+3. Audio Model (K-means k=3, Standardize)
+   Silhouette = 0.206   | k ที่ silhouette สูงสุดในช่วง 2-8 คือ k=2 (0.228) แต่เลือกใช้ k=3 เพราะแบ่งกลุ่มที่ตีความได้ละเอียดกว่า โดยยอมให้ silhouette ต่ำลงเล็กน้อย
+   โปรไฟล์กลุ่ม (ค่าเฉลี่ย):
+                               n_tracks    bpm  danceability_%  valence_%  energy_%  acousticness_%  instrumentalness_%  liveness_%  speechiness_%
+   Acoustic Chill Melancholic       249  122.4            54.8       33.7      47.1            52.4                 4.7        16.2            5.6
+   Rap Hip-Hop Talk-Heavy           147  127.6            72.9       50.5      62.8            26.6                 0.1        16.9           30.3
+   Upbeat Dance Party               556  121.3            70.9       59.6      72.3            15.9                 0.6        19.4            6.8
+
+4. สัดส่วน (%) ของแต่ละกลุ่มเสียง ที่อยู่ในแต่ละกลุ่มความนิยม
+   pop_cluster_label           All-Time Megahits  Moderate Hits  Top Charting Hits
+   audio_cluster_label                                                            
+   Acoustic Chill Melancholic               40.0           41.0               19.0
+   Rap Hip-Hop Talk-Heavy                   23.0           55.0               22.0
+   Upbeat Dance Party                       35.0           36.0               29.0
+
+5. ข้อค้นพบ
+   - กลุ่มเสียงที่อยู่ในกลุ่ม All-Time Megahits มากที่สุดคือ 'Acoustic Chill Melancholic' (40%) และน้อยที่สุดคือ 'Rap Hip-Hop Talk-Heavy' (23%)
+   - กลุ่มความนิยมที่เป็นเพลงใหม่ที่สุดคือ 'Top Charting Hits' (ปีมัธยฐาน 2023)
+   - โมเดล Popularity แยกกลุ่มได้ชัดกว่า (silhouette Popularity 0.367 เทียบ Audio 0.206)
+   - หมายเหตุ: ข้อค้นพบข้างต้นเป็นแนวโน้มจากการนับสัดส่วน ไม่ได้ทดสอบนัยสำคัญทางสถิติ
+
+6. ตัวอย่างการแนะนำเพลง จากเพลง 'Perfect' (recommend(song, model, count))
+   model=audio (เสียงคล้ายกัน):
+     1. All Too Well (10 Minute Version) (Taylor's Version) (From The Vault) - Taylor Swift
+     2. Maroon - Taylor Swift
+     3. After Hours - The Weeknd
+     4. Am I Dreaming (Metro Boomin & A$AP Rocky, Roisee) - A$AP Rocky, Metro Boomin, Roisee
+     5. Creep - Radiohead
+   model=pop (ความนิยมใกล้เคียงกัน):
+     1. Say You Won't Let Go - James Arthur
+     2. Shallow - Lady Gaga, Bradley Cooper
+     3. Circles - Post Malone
+     4. Believer - Imagine Dragons
+     5. Something Just Like This - The Chainsmokers, Coldplay
+
+7. ข้อจำกัดและแนวทางต่อยอด
+   - ชุดข้อมูลไม่มี genre และพฤติกรรมผู้ใช้ จึงวัดความแม่นยำของการแนะนำไม่ได้ (ไม่มี ground truth)
+   - ชื่อกลุ่มตั้งจากโปรไฟล์โดยผู้วิเคราะห์ ไม่ใช่ผลจากโมเดลโดยตรง
+   - Audio silhouette ต่ำ ขอบเขตกลุ่มซ้อนกัน เพลงที่อยู่ใกล้เส้นแบ่งอาจอยู่คนละกลุ่ม
+   - ข้อมูลมีเฉพาะเพลงที่ฮิตอยู่แล้วในปี 2023 จึงไม่ครอบคลุมเพลงทั่วไป
+   - ต่อยอด: เพิ่ม genre (เช่น Spotify API), รวมผล 2 โมเดล, ใช้ KNN หาเพลงใกล้เคียงทั้งชุด
