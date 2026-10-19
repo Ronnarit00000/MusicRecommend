@@ -495,12 +495,15 @@ if __name__ == "__main__":
    PATH = os.environ.get("SPOTIFY_CSV", "spotify_2023.csv")
    os.makedirs(CHART_DIRECTORY, exist_ok=True)
 
-   # DATA Preprocessing: โหลดและทำความสะอาด
+   # ----------------------------------------------------
+   #  DATA Preprocessing: โหลดและทำความสะอาด
+   # ----------------------------------------------------
+
    data_raw = DataProcessing.load_data(PATH)
    data_frame = DataProcessing.clean_data(data_raw)
 
 
-
+   # ----------------------------------------------------
    #  Popularity จัดกลุ่มตามความนิยม
    # ----------------------------------------------------
    #  Data Store:
@@ -509,7 +512,6 @@ if __name__ == "__main__":
    #  3. รัน KMeans สำหรับทุกค่า k ใน k_range คำนวณ inertia (Elbow) และ Silhouette Score 
    #  4. บันทึกกราฟเปรียบเทียบ
    #  5. กำหนดจำนวน cluster
-   # ----------------------------------------------------
 
    pop_store = Store(
       name = "pop",
@@ -527,13 +529,11 @@ if __name__ == "__main__":
    Chart.plot_evaluation(CHART_DIRECTORY, pop_store)
    pop_store.set_k_cluster(k_cluster = 3)
 
-   # ----------------------------------------------------
    #  Cluster:
    #  1. สร้าง model เอา data store มาใส่
    #  2. รัน KMeans ด้วยค่า k ที่เลือก เพิ่มคอลัมน์ cluster ลงใน DataFrame และพิมพ์จำนวนเพลงในแต่ละ cluster
    #  3. ตั้งชื่อจากโปรไฟล์ เพราะข้อมูลความนิยมเบ้ (ใช้มัธยฐาน features ในแต่ละ cluster เพื่อ Identify cluster )
    #  4. บันทึกกราฟเปรียบเทียบ
-   # ----------------------------------------------------
 
    pop_cluster = Cluster(pop_store)
    pop_cluster.fit()
@@ -543,7 +543,7 @@ if __name__ == "__main__":
    Chart.plot_cluster(CHART_DIRECTORY, pop_store, pop_cluster)
 
 
-
+   # ----------------------------------------------------
    #  Audio Clustering: จัดกลุ่มตามลักษณะเสียง
    # ----------------------------------------------------
    #  Data Store:
@@ -552,7 +552,6 @@ if __name__ == "__main__":
    #  3. รัน KMeans สำหรับทุกค่า k ใน k_range คำนวณ inertia (Elbow) และ Silhouette Score 
    #  4. บันทึกกราฟเปรียบเทียบ
    #  5. กำหนดจำนวน cluster
-   # ----------------------------------------------------
 
    audio_store = Store(
       name = "audio",
@@ -573,15 +572,13 @@ if __name__ == "__main__":
    audio_store.find_x_scaled()
    audio_store.find_evaluation()
    Chart.plot_evaluation(CHART_DIRECTORY, audio_store)
-   audio_store.set_k_cluster(k_cluster= 3)
+   audio_store.set_k_cluster(k_cluster = 3)
 
-   # ----------------------------------------------------
    #  Cluster:
    #  1. สร้าง model เอา data store มาใส่
    #  2. รัน KMeans ด้วยค่า k ที่เลือก เพิ่มคอลัมน์ cluster ลงใน DataFrame และพิมพ์จำนวนเพลงในแต่ละ cluster
    #  3. ตั้งชื่อจากโปรไฟล์ (ใช้ค่าเฉลี่ย ของ features ในแต่ละ cluster เพื่อ Identify cluster)
    #  4. บันทึกกราฟเปรียบเทียบ
-   # ----------------------------------------------------
 
    audio_cluster = Cluster(audio_store)
    audio_cluster.fit()
@@ -595,11 +592,10 @@ if __name__ == "__main__":
    # ----------------------------------------------------
    # แนะนำเพลง
    # ----------------------------------------------------
-
    # ลงทะเบียนโมเดลที่จัดกลุ่มแล้ว ให้ recommend() ใช้
+
    MODELS["audio"] = (audio_store, audio_cluster)
    MODELS["pop"] = (pop_store, pop_cluster)
-
    pd.set_option("display.width", 220)
    pd.set_option("display.max_columns", 20)
    print("\n##### แนะนำจากเสียงที่คล้ายกัน #####")
