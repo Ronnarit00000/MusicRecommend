@@ -235,27 +235,27 @@ class AutoLabel:
 # ==========================================================================
 class Chart:
    @staticmethod
-   def plot_evaluation(chart_directory: str, data: Store) -> None:
+   def plot_evaluation(chart_directory: str, store: Store) -> None:
       """กราฟ Elbow และ Silhouette ตามค่า k ใช้ประกอบการเลือก k"""
       _, axes = plt.subplots(1, 2, figsize=(16, 6))
 
-      axes[0].plot(data.k_range, data.evaluation["elbow"], 'o-', color='#1f77b4', linewidth=1.5, markersize=6)
-      axes[0].set_title(f'Elbow Method of {data.name}', fontsize=12)
+      axes[0].plot(store.k_range, store.evaluation["elbow"], 'o-', color='#1f77b4', linewidth=1.5, markersize=6)
+      axes[0].set_title(f'Elbow Method of {store.name}', fontsize=12)
       axes[0].set_xlabel('number of cluster (k)', fontsize=10)
       axes[0].set_ylabel('inertia', fontsize=10)
-      axes[0].set_xticks(list(data.k_range))
-      axes[1].plot(data.k_range, data.evaluation["silhouette"], 'o-', color='#2ca02c', linewidth=1.5, markersize=6)
-      axes[1].set_title(f'Silhouette Method of {data.name}', fontsize=12)
+      axes[0].set_xticks(list(store.k_range))
+      axes[1].plot(store.k_range, store.evaluation["silhouette"], 'o-', color='#2ca02c', linewidth=1.5, markersize=6)
+      axes[1].set_title(f'Silhouette Method of {store.name}', fontsize=12)
       axes[1].set_xlabel('number of cluster (k)', fontsize=10)
       axes[1].set_ylabel('silhouette score', fontsize=10)
-      axes[1].set_xticks(list(data.k_range))
+      axes[1].set_xticks(list(store.k_range))
 
       plt.tight_layout()
-      plt.savefig(f'{chart_directory}/evaluation-{data.name}-{int(time.time())}.png', dpi=300)
+      plt.savefig(f'{chart_directory}/evaluation-{store.name}-{int(time.time())}.png', dpi=300)
       plt.close()
 
    @staticmethod
-   def plot_cluster(chart_directory: str, data_model: Store, data_cluster: Cluster) -> None:
+   def plot_cluster(chart_directory: str, store: Store, cluster: Cluster) -> None:
       """กราฟซ้าย: scatter ของกลุ่มบน PCA 2 แกน | กราฟขวา: จำนวนเพลงในแต่ละกลุ่ม"""
       from matplotlib.lines import Line2D
 
@@ -263,32 +263,32 @@ class Chart:
 
       # PCA ลดข้อมูลหลายมิติเหลือ 2 มิติเพื่อวาดกราฟเท่านั้น (ไม่ได้ใช้จัดกลุ่ม)
       pca = PCA(n_components=2, random_state=RANDOM_STATE)
-      coords = pca.fit_transform(data_model.x_scaled)
-      centers = pca.transform(data_cluster.k_means.cluster_centers_)
+      coords = pca.fit_transform(store.x_scaled)
+      centers = pca.transform(cluster.k_means.cluster_centers_)
 
-      labels = data_model.data_frame[data_model.name_cluster].values
+      labels = store.data_frame[store.name_cluster].values
 
       # สีของแต่ละ cluster (ใช้ร่วมกันทั้ง scatter และ bar)
       cmap = plt.cm.tab10
       norm = plt.Normalize(vmin=labels.min(), vmax=labels.max())
-      cluster_ids = sorted(data_cluster.label.keys())
+      cluster_ids = sorted(cluster.label.keys())
       cluster_colors = {cid: cmap(norm(cid)) for cid in cluster_ids}
 
       axes[0].scatter(coords[:, 0], coords[:, 1], c=labels, cmap=cmap, norm=norm, s=18, alpha=0.7)
       axes[0].scatter(centers[:, 0], centers[:, 1], c='black', marker='X', s=200,
                       edgecolors='white', linewidths=1.5)   # จุดศูนย์กลางกลุ่ม (centroid)
-      axes[0].set_title(f'K-Means Clusters (k={data_model.k_cluster}) - PCA 2D', fontsize=12)
+      axes[0].set_title(f'K-Means Clusters (k={store.k_cluster}) - PCA 2D', fontsize=12)
       axes[0].set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}%)')
       axes[0].set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}%)')
 
       # legend สร้างตามเลขกลุ่ม เพื่อให้ชื่อตรงกับสีเสมอ
       handles = [Line2D([0], [0], marker='o', linestyle='', markersize=8, color=cluster_colors[cid],
-                        label=data_cluster.label[cid].replace("\n", " ")) for cid in cluster_ids]
+                        label=cluster.label[cid].replace("\n", " ")) for cid in cluster_ids]
       handles.append(Line2D([0], [0], marker='X', linestyle='', markersize=10, color='black', label='centroid'))
       axes[0].legend(handles=handles)
 
-      counts = data_model.data_frame[data_model.name_cluster].value_counts().sort_index()
-      bar_names = [data_cluster.label[i] for i in counts.index]
+      counts = store.data_frame[store.name_cluster].value_counts().sort_index()
+      bar_names = [cluster.label[i] for i in counts.index]
       bar_colors = [cluster_colors[i] for i in counts.index]
       bars = axes[1].bar(bar_names, counts.values, color=bar_colors)
       axes[1].bar_label(bars)
@@ -297,7 +297,7 @@ class Chart:
       axes[1].set_ylabel('music')
 
       plt.tight_layout()
-      plt.savefig(f"{chart_directory}/cluster-{data_model.name}-{int(time.time())}.png", dpi=300)
+      plt.savefig(f"{chart_directory}/cluster-{store.name}-{int(time.time())}.png", dpi=300)
       plt.close()
 
 
@@ -326,9 +326,9 @@ def recommend(song: str, model: str, count: int, max_per_artist: int | None = No
    key = model.strip().lower()
    if key not in MODELS:
       raise ValueError(f"model ต้องเป็นหนึ่งใน {list(MODELS)} แต่ได้ '{model}'")
-   data_model, cluster = MODELS[key]
-   df = data_model.data_frame
-   col = data_model.name_cluster
+   store, cluster = MODELS[key]
+   df = store.data_frame
+   col = store.name_cluster
 
    # 1) หาเพลงเริ่มต้น (ชื่อซ้ำ -> เลือกตัวที่ streams สูงสุด)
    titles = df["track_name"].astype(str)
@@ -342,7 +342,7 @@ def recommend(song: str, model: str, count: int, max_per_artist: int | None = No
    cluster_name = cluster.label[cluster_id].replace("\n", " ") if cluster.label else f"cluster {cluster_id}"
 
    # 2-3) ผู้สมัคร = เพลงอื่นในกลุ่มเดียวกัน เรียงตามระยะห่างจากเพลงเริ่มต้น
-   X = data_model.x_scaled                     # แถวของ x_scaled ตรงกับแถวของ DataFrame
+   X = store.x_scaled                     # แถวของ x_scaled ตรงกับแถวของ DataFrame
    cand = df.assign(distance=np.linalg.norm(X - X[seed_idx], axis=1))
    garbled = (cand["track_name"].astype(str).str.contains(GARBLED_MARK, regex=False)
               | cand["artist(s)_name"].astype(str).str.contains(GARBLED_MARK, regex=False))
@@ -359,7 +359,7 @@ def recommend(song: str, model: str, count: int, max_per_artist: int | None = No
    if len(out) < count:
       print(f"[หมายเหตุ] ได้ {len(out)} เพลง จากที่ขอ {count} (ใน cluster นี้มีผู้สมัครไม่พอ)")
 
-   label_col = data_model.name_cluster_label
+   label_col = store.name_cluster_label
    cols = ["track_name", "artist(s)_name", "released_year", "streams", "distance"]
    if label_col in out.columns:
       cols.insert(3, label_col)

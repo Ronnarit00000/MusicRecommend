@@ -147,7 +147,7 @@ print(recommend("Blinding Lights", "pop", 10, max_per_artist=1).to_string(index=
 | คลาส/ฟังก์ชัน | หน้าที่ |
 |---|---|
 | `DataProcessing` | โหลดและทำความสะอาดข้อมูล |
-| `DataModel` | เก็บฟีเจอร์ Standardize หาค่า k (Elbow, Silhouette) |
+| `Store` | เก็บฟีเจอร์ Standardize หาค่า k (Elbow, Silhouette) |
 | `Cluster` | จัดกลุ่มด้วย K-means สรุปโปรไฟล์ ตั้งชื่อกลุ่ม |
 | `AutoLabel` | ตั้งชื่อกลุ่มอัตโนมัติจากโปรไฟล์ |
 | `Chart` | วาดกราฟ |
