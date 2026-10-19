@@ -99,9 +99,9 @@ class DataProcessing:
 
 
 # ==========================================================================
-# 2) DataModel: เก็บฟีเจอร์ + Standardize + หาค่า k
+# 2) Store: เก็บฟีเจอร์ + Standardize + หาค่า k
 # ==========================================================================
-class DataModel:
+class Store:
    """เก็บทุกอย่างของ 1 โมเดล: DataFrame, ฟีเจอร์ที่ใช้, ข้อมูลที่ Standardize แล้ว, ผลประเมินค่า k"""
 
    def __init__(self, data_frame: pd.DataFrame, features: list[str], name: str, k_range: range):
@@ -157,7 +157,7 @@ class DataModel:
 # 3) Cluster: จัดกลุ่ม + โปรไฟล์ + ตั้งชื่อ
 # ==========================================================================
 class Cluster:
-   def __init__(self, data: DataModel):
+   def __init__(self, data: Store):
       self.data = data
       self.k_means = None
       self.label = None          # dict {เลขกลุ่ม: ชื่อกลุ่ม}
@@ -235,7 +235,7 @@ class AutoLabel:
 # ==========================================================================
 class Chart:
    @staticmethod
-   def plot_evaluation(chart_directory: str, data: DataModel) -> None:
+   def plot_evaluation(chart_directory: str, data: Store) -> None:
       """กราฟ Elbow และ Silhouette ตามค่า k ใช้ประกอบการเลือก k"""
       _, axes = plt.subplots(1, 2, figsize=(16, 6))
 
@@ -255,7 +255,7 @@ class Chart:
       plt.close()
 
    @staticmethod
-   def plot_cluster(chart_directory: str, data_model: DataModel, data_cluster: Cluster) -> None:
+   def plot_cluster(chart_directory: str, data_model: Store, data_cluster: Cluster) -> None:
       """กราฟซ้าย: scatter ของกลุ่มบน PCA 2 แกน | กราฟขวา: จำนวนเพลงในแต่ละกลุ่ม"""
       from matplotlib.lines import Line2D
 
@@ -305,8 +305,7 @@ class Chart:
 # 6) แนะนำเพลง (ใช้หลังจัดกลุ่มเสร็จ)
 # ==========================================================================
 # ลงทะเบียนโมเดลที่จัดกลุ่มแล้วไว้ที่นี่ (ทำใน main) recommend() จะดึงไปใช้ตามชื่อ "audio" / "pop"
-MODELS: dict[str, tuple[DataModel, Cluster]] = {}
-
+MODELS: dict[str, tuple[Store, Cluster]] = {}
 
 def recommend(song: str, model: str, count: int, max_per_artist: int | None = None,
               verbose: bool = True) -> pd.DataFrame:
@@ -381,8 +380,8 @@ def recommend(song: str, model: str, count: int, max_per_artist: int | None = No
 # 7) Summary: สรุปผลทั้งหมด (คำนวณจากผลที่รันจริง ไม่ได้เขียนตัวเลขตายตัว)
 # ==========================================================================
 class Summary:
-   def __init__(self, data_frame: pd.DataFrame, pop: tuple[DataModel, Cluster],
-                audio: tuple[DataModel, Cluster]):
+   def __init__(self, data_frame: pd.DataFrame, pop: tuple[Store, Cluster],
+                audio: tuple[Store, Cluster]):
       self.df = data_frame
       self.pop_model, self.pop_cluster = pop
       self.audio_model, self.audio_cluster = audio
@@ -392,7 +391,7 @@ class Summary:
       """เปลี่ยนขึ้นบรรทัดใหม่ในชื่อกลุ่มเป็นช่องว่าง (ชื่อกลุ่มเสียงมี \\n ไว้ใช้ในกราฟ)"""
       return str(text).replace("\n", " ")
 
-   def _best_k_note(self, model: DataModel) -> str:
+   def _best_k_note(self, model: Store) -> str:
       """รายงานว่า k ที่ silhouette สูงสุดคือเท่าไร และต่างจาก k ที่เลือกหรือไม่ (รายงานตามจริง)"""
       scores = model.evaluation["silhouette"]
       best_k = list(model.k_range)[int(np.argmax(scores))]
@@ -493,139 +492,131 @@ class Summary:
 if __name__ == "__main__":
    CHART_DIRECTORY = "chart"
    OUTPUT_DIRECTORY = "output"
-
    PATH = os.environ.get("SPOTIFY_CSV", "spotify_2023.csv")
-
    os.makedirs(CHART_DIRECTORY, exist_ok=True)
 
-   # ----------------------------------------------------
    # DATA Preprocessing: โหลดและทำความสะอาด
+   data_raw = DataProcessing.load_data(PATH)
+   data_frame = DataProcessing.clean_data(data_raw)
+
+
+
+   #  Popularity จัดกลุ่มตามความนิยม
+   # ----------------------------------------------------
+   #  Data Store:
+   #  1. สร้าง Object เก็บ name, k_range, data_frame, features
+   #  2. log=True: ข้อมูลความนิยมเบ้มาก ต้อง log1p ก่อน Standardize
+   #  3. รัน KMeans สำหรับทุกค่า k ใน k_range คำนวณ inertia (Elbow) และ Silhouette Score 
+   #  4. บันทึกกราฟเปรียบเทียบ
+   #  5. กำหนดจำนวน cluster
    # ----------------------------------------------------
 
-   DATA_RAW = DataProcessing.load_data(PATH)
+   pop_store = Store(
+      name = "pop",
+      k_range = range(2, 9),
+      data_frame = data_frame,
+      features = [
+         'streams',
+         'in_spotify_playlists',
+         'in_spotify_charts',
+      ], 
+   )
 
-   DATA_FRAME = DataProcessing.clean_data(DATA_RAW)
-
-   # ----------------------------------------------------
-   # Popularity Clustering: จัดกลุ่มตามความนิยม
-   # ----------------------------------------------------
-
-   # เลือก playlist/charts ของ Spotify แพลตฟอร์มเดียว เพราะ playlist ของ Spotify/Apple/Deezer
-   # สัมพันธ์กันสูง (0.73-0.85) ถ้าใส่ทั้งหมดจะนับ "ความนิยมใน playlist" ซ้ำหลายรอบ
-   POPULARITY_FEATURES = [
-      'streams',
-      'in_spotify_playlists',
-      'in_spotify_charts',
-   ]
-
-   POPULARITY_NAME = "pop"
-
-   POPULARITY_RANGE = range(2, 9)   # ทดลอง k = 2..8
-
-   POPULARITY_DATA_MODEL = DataModel(DATA_FRAME, POPULARITY_FEATURES, POPULARITY_NAME, POPULARITY_RANGE)
-
-   # log=True: ข้อมูลความนิยมเบ้มาก ต้อง log1p ก่อน Standardize
-   POPULARITY_DATA_MODEL.find_x_scaled(log=True)
-
-   POPULARITY_DATA_MODEL.find_evaluation()
-
-   Chart.plot_evaluation(CHART_DIRECTORY, POPULARITY_DATA_MODEL)
-
-   # เลือก k=3 จากกราฟ Elbow/Silhouette และความสามารถในการตีความกลุ่ม
-   POPULARITY_BEST_K = 3
-
-   POPULARITY_DATA_MODEL.set_k_cluster(POPULARITY_BEST_K)
-
-   POPULARITY_CLUSTER = Cluster(POPULARITY_DATA_MODEL)
-
-   POPULARITY_CLUSTER.fit()
-
-   # ตั้งชื่อจากโปรไฟล์ เพราะข้อมูลความนิยมเบ้ (ใช้มัธยฐาน features ในแต่ละ cluster เพื่อ Identify cluster )
-   POPULARITY_LABELS = AutoLabel.popularity(POPULARITY_CLUSTER.profile("median"))
-
-   POPULARITY_CLUSTER.set_label(POPULARITY_LABELS)
-
-   print("ชื่อกลุ่มความนิยม:", POPULARITY_LABELS)
-
-   Chart.plot_cluster(CHART_DIRECTORY, POPULARITY_DATA_MODEL, POPULARITY_CLUSTER)
+   pop_store.find_x_scaled(log=True)
+   pop_store.find_evaluation()
+   Chart.plot_evaluation(CHART_DIRECTORY, pop_store)
+   pop_store.set_k_cluster(k_cluster = 3)
 
    # ----------------------------------------------------
-   # Audio Clustering: จัดกลุ่มตามลักษณะเสียง
+   #  Cluster:
+   #  1. สร้าง model เอา data store มาใส่
+   #  2. รัน KMeans ด้วยค่า k ที่เลือก เพิ่มคอลัมน์ cluster ลงใน DataFrame และพิมพ์จำนวนเพลงในแต่ละ cluster
+   #  3. ตั้งชื่อจากโปรไฟล์ เพราะข้อมูลความนิยมเบ้ (ใช้มัธยฐาน features ในแต่ละ cluster เพื่อ Identify cluster )
+   #  4. บันทึกกราฟเปรียบเทียบ
    # ----------------------------------------------------
 
-   AUDIO_FEATURES = [
-      'bpm',
-      'danceability_%',
-      'valence_%',
-      'energy_%',
-      'acousticness_%',
-      'instrumentalness_%',
-      'liveness_%',
-      'speechiness_%'
-   ]
+   pop_cluster = Cluster(pop_store)
+   pop_cluster.fit()
+   pop_labels = AutoLabel.popularity(pop_cluster.profile("median"))
+   pop_cluster.set_label(pop_labels)
+   print("ชื่อกลุ่มความนิยม:", pop_labels)
+   Chart.plot_cluster(CHART_DIRECTORY, pop_store, pop_cluster)
 
-   AUDIO_NAME = "audio"
 
-   AUDIO_RANGE = range(2, 9)        # ทดลอง k = 2..8
 
-   AUDIO_DATA_MODEL = DataModel(DATA_FRAME, AUDIO_FEATURES, AUDIO_NAME, AUDIO_RANGE)
+   #  Audio Clustering: จัดกลุ่มตามลักษณะเสียง
+   # ----------------------------------------------------
+   #  Data Store:
+   #  1. สร้าง Object เก็บ name, k_range, data_frame, features
+   #  2. ทำ Standardize
+   #  3. รัน KMeans สำหรับทุกค่า k ใน k_range คำนวณ inertia (Elbow) และ Silhouette Score 
+   #  4. บันทึกกราฟเปรียบเทียบ
+   #  5. กำหนดจำนวน cluster
+   # ----------------------------------------------------
 
-   # ฟีเจอร์เสียงเป็นเปอร์เซ็นต์ 0-100 ไม่เบ้มาก จึงไม่ต้อง log แค่ Standardize
-   AUDIO_DATA_MODEL.find_x_scaled()
+   audio_store = Store(
+      name = "audio",
+      k_range = range(2,9),
+      data_frame = data_frame,
+      features = [
+         'bpm',
+         'danceability_%',
+         'valence_%',
+         'energy_%',
+         'acousticness_%',
+         'instrumentalness_%',
+         'liveness_%',
+         'speechiness_%'
+      ]
+   )
 
-   AUDIO_DATA_MODEL.find_evaluation()
+   audio_store.find_x_scaled()
+   audio_store.find_evaluation()
+   Chart.plot_evaluation(CHART_DIRECTORY, audio_store)
+   audio_store.set_k_cluster(k_cluster= 3)
 
-   Chart.plot_evaluation(CHART_DIRECTORY, AUDIO_DATA_MODEL)
+   # ----------------------------------------------------
+   #  Cluster:
+   #  1. สร้าง model เอา data store มาใส่
+   #  2. รัน KMeans ด้วยค่า k ที่เลือก เพิ่มคอลัมน์ cluster ลงใน DataFrame และพิมพ์จำนวนเพลงในแต่ละ cluster
+   #  3. ตั้งชื่อจากโปรไฟล์ (ใช้ค่าเฉลี่ย ของ features ในแต่ละ cluster เพื่อ Identify cluster)
+   #  4. บันทึกกราฟเปรียบเทียบ
+   # ----------------------------------------------------
 
-   AUDIO_BEST_K = 3
+   audio_cluster = Cluster(audio_store)
+   audio_cluster.fit()
+   audio_labels = AutoLabel.audio(audio_cluster.profile("mean"))
+   audio_cluster.set_label(audio_labels)
+   print("ชื่อกลุ่มเสียง:", {k: v.replace("\n", " ") for k, v in audio_labels.items()})
+   Chart.plot_cluster(CHART_DIRECTORY, audio_store, audio_cluster)
 
-   AUDIO_DATA_MODEL.set_k_cluster(AUDIO_BEST_K)
 
-   AUDIO_CLUSTER = Cluster(AUDIO_DATA_MODEL)
-
-   AUDIO_CLUSTER.fit()
-
-   # ตั้งชื่อจากโปรไฟล์ (ใช้ค่าเฉลี่ย ของ features ในแต่ละ cluster เพื่อ Identify cluster)
-   AUDIO_LABELS = AutoLabel.audio(AUDIO_CLUSTER.profile("mean"))
-
-   AUDIO_CLUSTER.set_label(AUDIO_LABELS)
-
-   print("ชื่อกลุ่มเสียง:", {k: v.replace("\n", " ") for k, v in AUDIO_LABELS.items()})
-
-   Chart.plot_cluster(CHART_DIRECTORY, AUDIO_DATA_MODEL, AUDIO_CLUSTER)
 
    # ----------------------------------------------------
    # แนะนำเพลง
    # ----------------------------------------------------
 
    # ลงทะเบียนโมเดลที่จัดกลุ่มแล้ว ให้ recommend() ใช้
-   MODELS["audio"] = (AUDIO_DATA_MODEL, AUDIO_CLUSTER)
-   MODELS["pop"] = (POPULARITY_DATA_MODEL, POPULARITY_CLUSTER)
+   MODELS["audio"] = (audio_store, audio_cluster)
+   MODELS["pop"] = (pop_store, pop_cluster)
 
    pd.set_option("display.width", 220)
    pd.set_option("display.max_columns", 20)
-
    print("\n##### แนะนำจากเสียงที่คล้ายกัน #####")
    print(recommend("Perfect", "audio", 5).to_string(index=False))
-
    print("\n##### แนะนำจากระดับความนิยมที่ใกล้กัน #####")
    print(recommend("Perfect", "pop", 5).to_string(index=False))
-
    print("\n##### แนะนำจากเสียง ไม่ซ้ำศิลปิน #####")
    print(recommend("Blinding Lights", "audio", 5, max_per_artist=1).to_string(index=False))
+
+
 
    # ----------------------------------------------------
    # สรุปผล
    # ----------------------------------------------------
 
-   SUMMARY = Summary(DATA_FRAME,
-                     pop=(POPULARITY_DATA_MODEL, POPULARITY_CLUSTER),
-                     audio=(AUDIO_DATA_MODEL, AUDIO_CLUSTER))
-
+   SUMMARY = Summary(data_frame, pop=(pop_store, pop_cluster), audio=(audio_store, audio_cluster))
    SUMMARY_TEXT = SUMMARY.build(example_song="Perfect")
-
    print("\n" + SUMMARY_TEXT)
-
    SUMMARY.save(SUMMARY_TEXT, OUTPUT_DIRECTORY)
-
    print(f"บันทึกแล้ว: {OUTPUT_DIRECTORY}/summary.txt และ {OUTPUT_DIRECTORY}/spotify_2023_clustered.csv")
