@@ -593,7 +593,7 @@ if __name__ == "__main__":
    # แนะนำเพลง
    # ----------------------------------------------------
    # ลงทะเบียนโมเดลที่จัดกลุ่มแล้ว ให้ recommend() ใช้
-
+   
    MODELS["audio"] = (audio_store, audio_cluster)
    MODELS["pop"] = (pop_store, pop_cluster)
    pd.set_option("display.width", 220)
