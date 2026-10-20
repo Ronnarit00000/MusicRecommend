@@ -22,7 +22,7 @@
 วิธีรัน
 -------
     pip install pandas numpy scikit-learn matplotlib
-    python clustering_all.py
+    python main.py
     (วาง spotify_2023.csv ไว้โฟลเดอร์เดียวกัน หรือกำหนด path ผ่านตัวแปรแวดล้อม SPOTIFY_CSV)
 
 ผลลัพธ์
@@ -157,8 +157,8 @@ class Store:
 # 3) Cluster: จัดกลุ่ม + โปรไฟล์ + ตั้งชื่อ
 # ==========================================================================
 class Cluster:
-   def __init__(self, data: Store):
-      self.data = data
+   def __init__(self, store: Store):
+      self.store = store
       self.k_means = None
       self.label = None          # dict {เลขกลุ่ม: ชื่อกลุ่ม}
       self.silhouette = None     # silhouette ของ k ที่เลือกใช้
@@ -168,29 +168,29 @@ class Cluster:
 
       n_init=10 : รัน 10 ครั้งด้วยจุดเริ่มต้นต่างกัน เก็บผลที่ดีที่สุด (K-means ไวต่อจุดเริ่มต้น)
       """
-      self.k_means = KMeans(n_clusters=self.data.k_cluster, random_state=RANDOM_STATE, n_init=10)
-      self.data.data_frame[self.data.name_cluster] = self.k_means.fit_predict(self.data.x_scaled)
-      self.silhouette = silhouette_score(self.data.x_scaled, self.data.data_frame[self.data.name_cluster])
-      print(f"\n{self.data.name}: k={self.data.k_cluster}  silhouette={self.silhouette:.3f}")
+      self.k_means = KMeans(n_clusters=self.store.k_cluster, random_state=RANDOM_STATE, n_init=10)
+      self.store.data_frame[self.store.name_cluster] = self.k_means.fit_predict(self.store.x_scaled)
+      self.silhouette = silhouette_score(self.store.x_scaled, self.store.data_frame[self.store.name_cluster])
+      print(f"\n{self.store.name}: k={self.store.k_cluster}  silhouette={self.silhouette:.3f}")
 
    def profile(self, stat: str = "mean") -> pd.DataFrame:
       """โปรไฟล์ของแต่ละกลุ่ม (stat = "mean" ค่าเฉลี่ย หรือ "median" มัธยฐาน)
 
       ข้อมูลความนิยมเบ้มาก ค่าเฉลี่ยถูกเพลงดังสุดๆ ดึงขึ้น จึงนิยมใช้มัธยฐานตีความกลุ่ม
       """
-      g = self.data.data_frame.groupby(self.data.name_cluster)
-      prof = g[self.data.features].agg(stat)
+      g = self.store.data_frame.groupby(self.store.name_cluster)
+      prof = g[self.store.features].agg(stat)
       prof["n_tracks"] = g.size()
       prof["median_year"] = g["released_year"].median()
       return prof
 
    def set_label(self, labels: dict[int, str]):
       """ตั้งชื่อกลุ่ม แล้วเพิ่มคอลัมน์ชื่อกลุ่มลงใน DataFrame (ตรวจว่าชื่อครบตามจำนวน k)"""
-      if set(labels) != set(range(self.data.k_cluster)):
-         raise ValueError(f"labels ต้องมี key เป็น 0..{self.data.k_cluster - 1} "
+      if set(labels) != set(range(self.store.k_cluster)):
+         raise ValueError(f"labels ต้องมี key เป็น 0..{self.store.k_cluster - 1} "
                           f"แต่ได้ {sorted(labels)}")
       self.label = labels
-      self.data.data_frame[self.data.name_cluster_label] = self.data.data_frame[self.data.name_cluster].map(labels)
+      self.store.data_frame[self.store.name_cluster_label] = self.store.data_frame[self.store.name_cluster].map(labels)
 
 # ==========================================================================
 # 4) AutoLabel: ตั้งชื่อกลุ่มอัตโนมัติจากโปรไฟล์
