@@ -503,45 +503,6 @@ if __name__ == "__main__":
    data_frame = DataProcessing.clean_data(data_raw)
 
 
-   # ----------------------------------------------------
-   #  Popularity จัดกลุ่มตามความนิยม
-   # ----------------------------------------------------
-   #  Data Store:
-   #  1. สร้าง Object เก็บ name, k_range, data_frame, features
-   #  2. log=True: ข้อมูลความนิยมเบ้มาก ต้อง log1p ก่อน Standardize
-   #  3. รัน KMeans สำหรับทุกค่า k ใน k_range คำนวณ inertia (Elbow) และ Silhouette Score 
-   #  4. บันทึกกราฟเปรียบเทียบ
-   #  5. กำหนดจำนวน cluster
-
-   pop_store = Store(
-      name = "pop",
-      k_range = range(2, 9),
-      data_frame = data_frame,
-      features = [
-         'streams',
-         'in_spotify_playlists',
-         'in_spotify_charts',
-      ], 
-   )
-
-   pop_store.find_x_scaled(log=True)
-   pop_store.find_evaluation()
-   Chart.plot_evaluation(CHART_DIRECTORY, pop_store)
-   pop_store.set_k_cluster(k_cluster = 3)
-
-   #  Cluster:
-   #  1. สร้าง model เอา data store มาใส่
-   #  2. รัน KMeans ด้วยค่า k ที่เลือก เพิ่มคอลัมน์ cluster ลงใน DataFrame และพิมพ์จำนวนเพลงในแต่ละ cluster
-   #  3. ตั้งชื่อจากโปรไฟล์ เพราะข้อมูลความนิยมเบ้ (ใช้มัธยฐาน features ในแต่ละ cluster เพื่อ Identify cluster )
-   #  4. บันทึกกราฟเปรียบเทียบ
-
-   pop_cluster = Cluster(pop_store)
-   pop_cluster.fit()
-   pop_labels = AutoLabel.popularity(pop_cluster.profile("median"))
-   pop_cluster.set_label(pop_labels)
-   print("ชื่อกลุ่มความนิยม:", pop_labels)
-   Chart.plot_cluster(CHART_DIRECTORY, pop_store, pop_cluster)
-
 
    # ----------------------------------------------------
    #  Audio Clustering: จัดกลุ่มตามลักษณะเสียง
@@ -586,6 +547,47 @@ if __name__ == "__main__":
    audio_cluster.set_label(audio_labels)
    print("ชื่อกลุ่มเสียง:", {k: v.replace("\n", " ") for k, v in audio_labels.items()})
    Chart.plot_cluster(CHART_DIRECTORY, audio_store, audio_cluster)
+
+
+
+   # ----------------------------------------------------
+   #  Popularity จัดกลุ่มตามความนิยม
+   # ----------------------------------------------------
+   #  Data Store:
+   #  1. สร้าง Object เก็บ name, k_range, data_frame, features
+   #  2. log=True: ข้อมูลความนิยมเบ้มาก ต้อง log1p ก่อน Standardize
+   #  3. รัน KMeans สำหรับทุกค่า k ใน k_range คำนวณ inertia (Elbow) และ Silhouette Score 
+   #  4. บันทึกกราฟเปรียบเทียบ
+   #  5. กำหนดจำนวน cluster
+
+   pop_store = Store(
+      name = "pop",
+      k_range = range(2, 9),
+      data_frame = data_frame,
+      features = [
+         'streams',
+         'in_spotify_playlists',
+         'in_spotify_charts',
+      ], 
+   )
+
+   pop_store.find_x_scaled(log=True)
+   pop_store.find_evaluation()
+   Chart.plot_evaluation(CHART_DIRECTORY, pop_store)
+   pop_store.set_k_cluster(k_cluster = 3)
+
+   #  Cluster:
+   #  1. สร้าง model เอา data store มาใส่
+   #  2. รัน KMeans ด้วยค่า k ที่เลือก เพิ่มคอลัมน์ cluster ลงใน DataFrame และพิมพ์จำนวนเพลงในแต่ละ cluster
+   #  3. ตั้งชื่อจากโปรไฟล์ เพราะข้อมูลความนิยมเบ้ (ใช้มัธยฐาน features ในแต่ละ cluster เพื่อ Identify cluster )
+   #  4. บันทึกกราฟเปรียบเทียบ
+
+   pop_cluster = Cluster(pop_store)
+   pop_cluster.fit()
+   pop_labels = AutoLabel.popularity(pop_cluster.profile("median"))
+   pop_cluster.set_label(pop_labels)
+   print("ชื่อกลุ่มความนิยม:", pop_labels)
+   Chart.plot_cluster(CHART_DIRECTORY, pop_store, pop_cluster)
 
 
 
